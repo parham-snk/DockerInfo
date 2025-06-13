@@ -1,37 +1,42 @@
-import { exec } from "child_process";
-import { clearInterval } from "timers";
-
-
-
-
-let timer=setInterval((x) => {
-    let s = exec('docker stats --no-stream', (err, stdout) => {
-        let str = stdout.toString();
-        // بررسی کن str شامل حداقل 4 خط هست که خط چهارم واقعی باشه
-        let lines = str.split("\n");
-        if (lines.length >= 2) {
-            //\s میشه فضای خالی
-            // {2,} میشه تعداد تکرار مورد قبلش که فضای خالی هست
-            let columns = lines[1].split(/\s{2,}/); // شکستن بر اساس چند فاصله
-            let ContainerName = columns[1];
-            let cpuUsage = columns[2];
-            let memoryUsage = columns[3];
-
-            let info = {
-                ContainerName,
-                cpuUsage,
-                memoryUsage
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const socket_io_1 = require("socket.io");
+const child_process_1 = require("child_process");
+let socketio = new socket_io_1.Server(8084, { cors: { origin: "*" } });
+socketio.on("connection", (socket) => __awaiter(void 0, void 0, void 0, function* () {
+    let status = true;
+    if (status) {
+        setInterval(() => {
+            let docker = {
+                ContainerName: "", memoryUsage: "", cpuUsage: ""
             };
-
-            console.log(info);
-        }
-    })
-    
-  
-}, 500);
-
-
-
-setTimeout(() => {
-    clearInterval(timer)
-}, 4000);
+            (0, child_process_1.exec)("docker stats --no-stream", (err, stdout, stderr) => {
+                let lines = stdout.toString().split(/\n/);
+                let rows = lines[1].split("   ");
+                docker.ContainerName = rows[1];
+                docker.cpuUsage = rows[3];
+                docker.memoryUsage = rows[5];
+                socket.emit('docker', docker);
+            });
+            if (!status)
+                return;
+        }, 1000);
+    }
+    else {
+    }
+    socket.on("changeStatus", ({ status }) => {
+        console.log(status);
+        if (status)
+            return status = true;
+        status = false;
+    });
+}));
